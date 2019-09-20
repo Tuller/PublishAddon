@@ -24,11 +24,41 @@ function Publish-Addon {
         $addonsDirectory = Join-Path $addonsDirectory -ChildPath "Interface/AddOns"
     }
     process {
-        if ($classic -eq $true) {
-            bash -c  "$WOW_PACKAGER -d -z -g 1.13.2"
+        if (Test-Path .\*.pkgmeta) {
+            if ($classic -eq $true) {
+                bash -c  "$WOW_PACKAGER -dlz -g 1.13.2"
+            }
+            else {
+                bash -c  "$WOW_PACKAGER -dlz"
+            }
         }
         else {
-            bash -c  "$WOW_PACKAGER -d -z"
+            $whitelist = @(
+                "*.lua",
+                "*.xml",
+                "*.toc",
+                "*.tga",
+                "*.blp",
+                "*.ttf",
+                "*.txt",
+                "README",
+                "README.*"
+                "LICENSE",
+                "LICENSE.*"
+            )
+
+            Remove-Item .\.release\* -Recurse -Force
+
+            foreach ($toc in Get-ChildItem *.toc -Recurse -Depth 1) {
+                $src = $toc.Directory.FullName
+                $dest = Join-Path ".\.release" -ChildPath $toc.Directory.Name
+
+                foreach ($file in Get-ChildItem -Path $src -Include $whitelist -Recurse) {
+                    $newFile =  $file.FullName.Replace($src, $dest)
+                    New-Item -ItemType File -Path $newFile -Force
+                    Copy-Item -Path $file -Destination $newFile
+                }
+            }
         }
 
         Get-ChildItem -Directory .\.release\ | ForEach-Object {
