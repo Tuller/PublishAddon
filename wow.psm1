@@ -26,10 +26,15 @@ function Publish-Addon {
     process {
         if (Test-Path .\*.pkgmeta) {
             if ($classic -eq $true) {
-                bash -c  "$WOW_PACKAGER -dlz -g 1.13.2"
+                if (Test-Path .\*.pkgmeta-classic) {
+                    bash -c "$WOW_PACKAGER -dlz -g 1.13.3 -m .pkgmeta-classic"
+                }
+                else {
+                    bash -c "$WOW_PACKAGER -dlz -g 1.13.3"
+                }
             }
             else {
-                bash -c  "$WOW_PACKAGER -dlz"
+                bash -c "$WOW_PACKAGER -dlz"
             }
         }
         else {
@@ -67,6 +72,8 @@ function Publish-Addon {
 
             robocopy /mir $src $dest > .\.release\robocopy.log
         }
+
+        Remove-Item .\.release -Recurse -Force
     }
 }
 Export-ModuleMember Publish-Addon
