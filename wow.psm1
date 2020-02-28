@@ -9,7 +9,12 @@ function Publish-Addon {
         [string] $addonsDirectory = $null
 
         if ($ptr -eq $true) {
-            $addonsDirectory = $WOW_PTR_HOME
+            if ($classic -eq $true) {
+                $addonsDirectory = $WOW_CLASSIC_PTR_HOME
+            }
+            else {
+                $addonsDirectory = $WOW_PTR_HOME
+            }
         }
         elseif ($beta -eq $true) {
             $addonsDirectory = $WOW_BETA_HOME
