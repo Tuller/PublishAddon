@@ -1,6 +1,7 @@
 function Publish-Addon {
     param (
         [switch]$ptr = $false,
+        [switch]$alpha = $false,
         [switch]$beta = $false,
         [switch]$classic = $false,
         [switch]$Verbose = $false
@@ -10,75 +11,78 @@ function Publish-Addon {
 
         if ($ptr -eq $true) {
             if ($classic -eq $true) {
-                $addonsDirectory = $WOW_CLASSIC_PTR_HOME
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_ptr_"
             }
             else {
-                $addonsDirectory = $WOW_PTR_HOME
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_ptr_"
             }
         }
         elseif ($beta -eq $true) {
-            $addonsDirectory = $WOW_BETA_HOME
+            if ($classic -eq $true) {
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_beta_"
+            }
+            else {
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_beta_"
+            }
+        }
+        elseif ($alpha -eq $true) {
+            if ($classic -eq $true) {
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_alpha_"
+            }
+            else {
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_alpha_"
+            }
         }
         elseif ($classic -eq $true) {
-            $addonsDirectory = $WOW_CLASSIC_HOME
+            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_"
         }
         else {
-            $addonsDirectory = $WOW_RETAIL_HOME
+            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_retail_"
         }
 
         $addonsDirectory = Join-Path $addonsDirectory -ChildPath "Interface/AddOns"
     }
     process {
+        $wowClassicVersion = "1.13.5"
+        $tempDir = "/tmp/wowpkg"
+        $uncTempDir = "\\wsl$\Ubuntu\tmp\wowpkg"
+
+        # copy stuff over to a temporary directory on the linux side
+        # this is a workaround for cross OS filesystem  performance being slow
+        # on WSL 2
+        if (Test-Path $uncTempDir) {
+            Remove-Item $uncTempDir -Recurse -Force
+        }
+
+        Copy-Item .\ -Destination $uncTempDir -Recurse
+
+        # run the packager script
         if (Test-Path .\*.pkgmeta) {
+            # if running classic, check for a .pkgmeta-classic file and use that
             if ($classic -eq $true) {
                 if (Test-Path .\*.pkgmeta-classic) {
-                    bash -c "$WOW_PACKAGER -dlz -g 1.13.3 -m .pkgmeta-classic"
+                    bash -c "$WOW_PACKAGER -dlz -g $wowClassicVersion -m .pkgmeta-classic -t $tempDir"
                 }
                 else {
-                    bash -c "$WOW_PACKAGER -dlz -g 1.13.3"
+                    bash -c "$WOW_PACKAGER -dlz -g $wowClassicVersion -t $tempDir"
                 }
             }
             else {
-                bash -c "$WOW_PACKAGER -dlz"
-            }
-        }
-        else {
-            $whitelist = @(
-                "*.lua",
-                "*.xml",
-                "*.toc",
-                "*.tga",
-                "*.blp",
-                "*.ttf",
-                "*.txt",
-                "README",
-                "README.*"
-                "LICENSE",
-                "LICENSE.*"
-            )
-
-            Remove-Item .\.release\* -Recurse -Force
-
-            foreach ($toc in Get-ChildItem *.toc -Recurse -Depth 1) {
-                $src = $toc.Directory.FullName
-                $dest = Join-Path ".\.release" -ChildPath $toc.Directory.Name
-
-                foreach ($file in Get-ChildItem -Path $src -Include $whitelist -Recurse) {
-                    $newFile =  $file.FullName.Replace($src, $dest)
-                    New-Item -ItemType File -Path $newFile -Force
-                    Copy-Item -Path $file -Destination $newFile
-                }
+                bash -c "$WOW_PACKAGER -dlz -t $tempDir"
             }
         }
 
-        Get-ChildItem -Directory .\.release\ | ForEach-Object {
+        # once the packager script is done, copy stuff back over from the temp
+        # directory over to the addons folder
+        Get-ChildItem -Directory $uncTempDir\.release\ | ForEach-Object {
             $src = $_.FullName
             $dest = Join-Path $addonsDirectory -ChildPath $_.Name
 
-            robocopy /mir $src $dest > .\.release\robocopy.log
+            robocopy /mir $src $dest > "$uncTempDir\.release\robocopy.log"
         }
 
-        Remove-Item .\.release -Recurse -Force
+        # cleanup the temp dir
+        Remove-Item $uncTempDir -Recurse -Force
     }
 }
 Export-ModuleMember Publish-Addon
