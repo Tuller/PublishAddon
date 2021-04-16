@@ -23,8 +23,13 @@ From an addon directory with a .pkgmeta file, run one of the following:
 ```powershell
 Publish-Addon
 Publish-Addon -classic
+Publish-Addon -bc
 Publish-Addon -ptr
 Publish-Addon -beta
+
+# you can use combinations to publish to things like the classic PTR/beta too
+Publish-Addon -classic -ptr
+Publish-Addon -classic -beta
 ```
 
 This will package up your addon and copy it to the Interface\AddOns folder in
