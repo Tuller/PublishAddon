@@ -1,6 +1,6 @@
 # Publish-Addon
 
-This is a powershell module I wrote so that I can invoke the
+This is a PowerShell module I wrote so that I can invoke the
 [Bigwigs Packager](https://github.com/BigWigsMods/packager) locally when testing
 addons.
 
@@ -8,7 +8,7 @@ addons.
 
 1. Install [PowerShell Core](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows)
 1. Install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
-1. Import this module into a powershell file
+1. Import this module into a PowerShell file
 1. Set the following environment variables:
 
     | Name             | Value                |
