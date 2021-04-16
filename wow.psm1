@@ -4,13 +4,17 @@ function Publish-Addon {
         [switch]$alpha = $false,
         [switch]$beta = $false,
         [switch]$classic = $false,
+        [switch]$bc = $false,
         [switch]$Verbose = $false
     )
     begin {
         [string] $addonsDirectory = $null
 
         if ($ptr -eq $true) {
-            if ($classic -eq $true) {
+            if ($bc -eq $true) {
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_ptr_"
+            }
+            elseif ($classic -eq $true) {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_ptr_"
             }
             else {
@@ -18,7 +22,10 @@ function Publish-Addon {
             }
         }
         elseif ($beta -eq $true) {
-            if ($classic -eq $true) {
+            if ($bc -eq $true) {
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_beta_"
+            }
+            elseif ($classic -eq $true) {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_beta_"
             }
             else {
@@ -26,12 +33,18 @@ function Publish-Addon {
             }
         }
         elseif ($alpha -eq $true) {
-            if ($classic -eq $true) {
+            if ($bc -eq $true) {
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_alpha_"
+            }
+            elseif ($classic -eq $true) {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_alpha_"
             }
             else {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_alpha_"
             }
+        }
+        elseif ($bc -eq $true) {
+            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_bc_"
         }
         elseif ($classic -eq $true) {
             $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_"
@@ -43,7 +56,6 @@ function Publish-Addon {
         $addonsDirectory = Join-Path $addonsDirectory -ChildPath "Interface/AddOns"
     }
     process {
-        $wowClassicVersion = "1.13.5"
         $tempDir = "/tmp/wowpkg"
         $uncTempDir = "\\wsl$\Ubuntu\tmp\wowpkg"
 
@@ -58,13 +70,24 @@ function Publish-Addon {
 
         # run the packager script
         if (Test-Path .\*.pkgmeta) {
-            # if running classic, check for a .pkgmeta-classic file and use that
-            if ($classic -eq $true) {
-                if (Test-Path .\*.pkgmeta-classic) {
-                    bash -c "$WOW_PACKAGER -dlz -g $wowClassicVersion -m .pkgmeta-classic -t $tempDir"
+            # if running bc, check for a .pkgmeta-bc file and use that
+            # if it exists
+            if ($bc -eq $true) {
+                if (Test-Path .\*.pkgmeta-bc) {
+                    bash -c "$WOW_PACKAGER -dlz -g bc -m .pkgmeta-bc -t $tempDir"
                 }
                 else {
-                    bash -c "$WOW_PACKAGER -dlz -g $wowClassicVersion -t $tempDir"
+                    bash -c "$WOW_PACKAGER -dlz -g bc -t $tempDir"
+                }
+            }
+            # if running classic, check for a .pkgmeta-classic file and use that
+            # if it exists
+            elseif ($classic -eq $true) {
+                if (Test-Path .\*.pkgmeta-classic) {
+                    bash -c "$WOW_PACKAGER -dlz -g classic -m .pkgmeta-classic -t $tempDir"
+                }
+                else {
+                    bash -c "$WOW_PACKAGER -dlz -g classic -t $tempDir"
                 }
             }
             else {
@@ -76,7 +99,13 @@ function Publish-Addon {
         # directory over to the addons folder
         Get-ChildItem -Directory $uncTempDir\.release\ | ForEach-Object {
             $src = $_.FullName
-            $dest = Join-Path $addonsDirectory -ChildPath $_.Name
+
+            # purge zone identifier files, in case those come along
+            # they're NFS alternate file stream stuff from downloading things
+            # from the internet using Edge/IE
+            if (-Not $src.endswith("Zone.Identifier")) {
+                $dest = Join-Path $addonsDirectory -ChildPath $_.Name
+            }
 
             robocopy /mir $src $dest > "$uncTempDir\.release\robocopy.log"
         }
