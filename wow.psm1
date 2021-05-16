@@ -4,14 +4,14 @@ function Publish-Addon {
         [switch]$alpha = $false,
         [switch]$beta = $false,
         [switch]$classic = $false,
-        [switch]$bc = $false,
+        [switch]$bcc = $false,
         [switch]$Verbose = $false
     )
     begin {
         [string] $addonsDirectory = $null
 
         if ($ptr -eq $true) {
-            if ($bc -eq $true) {
+            if ($bcc -eq $true) {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_ptr_"
             }
             elseif ($classic -eq $true) {
@@ -22,7 +22,7 @@ function Publish-Addon {
             }
         }
         elseif ($beta -eq $true) {
-            if ($bc -eq $true) {
+            if ($bcc -eq $true) {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_beta_"
             }
             elseif ($classic -eq $true) {
@@ -33,7 +33,7 @@ function Publish-Addon {
             }
         }
         elseif ($alpha -eq $true) {
-            if ($bc -eq $true) {
+            if ($bcc -eq $true) {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_alpha_"
             }
             elseif ($classic -eq $true) {
@@ -43,7 +43,7 @@ function Publish-Addon {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_alpha_"
             }
         }
-        elseif ($bc -eq $true) {
+        elseif ($bcc -eq $true) {
             $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_bc_"
         }
         elseif ($classic -eq $true) {
@@ -72,12 +72,12 @@ function Publish-Addon {
         if (Test-Path .\*.pkgmeta) {
             # if running bc, check for a .pkgmeta-bc file and use that
             # if it exists
-            if ($bc -eq $true) {
+            if ($bcc -eq $true) {
                 if (Test-Path .\*.pkgmeta-bc) {
-                    bash -c "$WOW_PACKAGER -dlz -g bc -m .pkgmeta-bc -t $tempDir"
+                    bash -c "$WOW_PACKAGER -dlz -g bcc -m .pkgmeta-bcc -t $tempDir"
                 }
                 else {
-                    bash -c "$WOW_PACKAGER -dlz -g bc -t $tempDir"
+                    bash -c "$WOW_PACKAGER -dlz -g bcc -t $tempDir"
                 }
             }
             # if running classic, check for a .pkgmeta-classic file and use that
