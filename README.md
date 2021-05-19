@@ -23,7 +23,7 @@ From an addon directory with a .pkgmeta file, run one of the following:
 ```powershell
 Publish-Addon
 Publish-Addon -classic
-Publish-Addon -bc
+Publish-Addon -bcc
 Publish-Addon -ptr
 Publish-Addon -beta
 
