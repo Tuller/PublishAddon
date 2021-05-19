@@ -15,7 +15,7 @@ function Publish-Addon {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_ptr_"
             }
             elseif ($classic -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_ptr_"
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_ptr_"
             }
             else {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_ptr_"
@@ -26,7 +26,7 @@ function Publish-Addon {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_beta_"
             }
             elseif ($classic -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_beta_"
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_beta_"
             }
             else {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_beta_"
@@ -37,17 +37,17 @@ function Publish-Addon {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_alpha_"
             }
             elseif ($classic -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_alpha_"
+                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_alpha_"
             }
             else {
                 $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_alpha_"
             }
         }
         elseif ($bcc -eq $true) {
-            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_bc_"
+            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_"
         }
         elseif ($classic -eq $true) {
-            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_"
+            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_"
         }
         else {
             $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_retail_"
