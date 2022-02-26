@@ -21,15 +21,26 @@ addons.
 From an addon directory with a .pkgmeta file, run one of the following:
 
 ```powershell
+# Deploy a version for each game flavor (Retail, BCC, Vanilla) with the live
+# release channel.
 Publish-Addon
-Publish-Addon -classic
+
+# Target a specific game flavor. This will use the packager's keyword
+# replacement abilities for that version and use a flavor specific .pkgmeta
+# (.pkgmeta-[flavor]), if present
+Publish-Addon -retail
 Publish-Addon -bcc
+Publish-Addon -classic
+
+# Deploy to a specific game release channel.
 Publish-Addon -ptr
 Publish-Addon -beta
+Publish-Addon -alpha
 
-# you can use combinations to publish to things like the classic PTR/beta too
-Publish-Addon -classic -ptr
-Publish-Addon -classic -beta
+# Deploy to a specific flavor and release channel.
+Publish-Addon -retail -ptr
+Publish-Addon -bcc -beta
+Publish-Addon -classic -alpha
 ```
 
 This will package up your addon and copy it to the Interface\AddOns folder in

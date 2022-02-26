@@ -1,66 +1,74 @@
 function Publish-Addon {
     param (
         [switch]$ptr = $false,
-        [switch]$alpha = $false,
         [switch]$beta = $false,
+        [switch]$alpha = $false,
+        [switch]$retail = $false,
         [switch]$classic = $false,
         [switch]$bcc = $false,
         [switch]$Verbose = $false
     )
     begin {
-        [string] $addonsDirectory = $null
+        $gameDirs = [System.Collections.Generic.List[string]]::new()
+        $all = -Not ($retail -or $classic -or $bcc)
 
-        if ($ptr -eq $true) {
-            if ($bcc -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_ptr_"
+        if ($ptr) {
+            if ($bcc -or $all) {
+                $gameDirs.Add("_classic_ptr_")
             }
-            elseif ($classic -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_ptr_"
+
+            if ($classic -or $all) {
+                $gameDirs.Add("_classic_era_ptr_")
             }
-            else {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_ptr_"
-            }
-        }
-        elseif ($beta -eq $true) {
-            if ($bcc -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_beta_"
-            }
-            elseif ($classic -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_beta_"
-            }
-            else {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_beta_"
+
+            if ($retail -or $all) {
+                $gameDirs.Add("_ptr_")
             }
         }
-        elseif ($alpha -eq $true) {
-            if ($bcc -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_alpha_"
+        elseif ($beta) {
+            if ($bcc -or $all) {
+                $gameDirs.Add("_classic_beta_")
             }
-            elseif ($classic -eq $true) {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_alpha_"
+
+            if ($classic -or $all) {
+                $gameDirs.Add("_classic_era_beta_")
             }
-            else {
-                $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_alpha_"
+
+            if ($retail -or $all) {
+                $gameDirs.Add("_beta_")
             }
         }
-        elseif ($bcc -eq $true) {
-            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_"
-        }
-        elseif ($classic -eq $true) {
-            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_classic_era_"
+        elseif ($alpha) {
+            if ($bcc -or $all) {
+                $gameDirs.Add("_classic_alpha_")
+            }
+
+            if ($classic -or $all) {
+                $gameDirs.Add("_classic_era_alpha_")
+            }
+
+            $gameDirs.Add("_alpha_")
         }
         else {
-            $addonsDirectory = Join-Path $WOW_HOME -ChildPath "_retail_"
-        }
+            if ($bcc -or $all) {
+                $gameDirs.Add("_classic_")
+            }
 
-        $addonsDirectory = Join-Path $addonsDirectory -ChildPath "Interface/AddOns"
+            if ($classic -or $all) {
+                $gameDirs.Add("_classic_era_")
+            }
+
+            if ($retail -or $all) {
+                $gameDirs.Add("_retail_")
+            }
+        }
     }
     process {
         $tempDir = "/tmp/wowpkg"
         $uncTempDir = "\\wsl$\Ubuntu\tmp\wowpkg"
 
         # copy stuff over to a temporary directory on the linux side
-        # this is a workaround for cross OS filesystem  performance being slow
+        # this is a workaround for cross OS filesystem performance being slow
         # on WSL 2
         if (Test-Path $uncTempDir) {
             Remove-Item $uncTempDir -Recurse -Force
@@ -70,9 +78,8 @@ function Publish-Addon {
 
         # run the packager script
         if (Test-Path .\*.pkgmeta) {
-            # if running bc, check for a .pkgmeta-bc file and use that
-            # if it exists
-            if ($bcc -eq $true) {
+            # check for flavor specific .pkgmeta files, and use those if they exist
+            if ($bcc) {
                 if (Test-Path .\*.pkgmeta-bc) {
                     bash -c "$WOW_PACKAGER -dlz -g bcc -m .pkgmeta-bcc -t $tempDir"
                 }
@@ -80,9 +87,7 @@ function Publish-Addon {
                     bash -c "$WOW_PACKAGER -dlz -g bcc -t $tempDir"
                 }
             }
-            # if running classic, check for a .pkgmeta-classic file and use that
-            # if it exists
-            elseif ($classic -eq $true) {
+            elseif ($classic) {
                 if (Test-Path .\*.pkgmeta-classic) {
                     bash -c "$WOW_PACKAGER -dlz -g classic -m .pkgmeta-classic -t $tempDir"
                 }
@@ -90,24 +95,38 @@ function Publish-Addon {
                     bash -c "$WOW_PACKAGER -dlz -g classic -t $tempDir"
                 }
             }
+            elseif ($retail) {
+                if (Test-Path .\*.pkgmeta-retail) {
+                    bash -c "$WOW_PACKAGER -dlz -g retail -m .pkgmeta-retail -t $tempDir"
+                }
+                else {
+                    bash -c "$WOW_PACKAGER -dlz -g retail -t $tempDir"
+                }
+            }
+            # publish a universal addon, automatically generating flavor
+            # specific TOC files
             else {
-                bash -c "$WOW_PACKAGER -dlz -t $tempDir"
+                bash -c "$WOW_PACKAGER -dlzS -t $tempDir"
             }
         }
 
         # once the packager script is done, copy stuff back over from the temp
         # directory over to the addons folder
-        Get-ChildItem -Directory $uncTempDir\.release\ | ForEach-Object {
-            $src = $_.FullName
+        foreach ($gameDir in $gameDirs) {
+            $addonsDir = [IO.Path]::Combine($WOW_HOME, $gameDir, 'Interface', 'AddOns')
 
-            # purge zone identifier files, in case those come along
-            # they're NFS alternate file stream stuff from downloading things
-            # from the internet using Edge/IE
-            if (-Not $src.endswith("Zone.Identifier")) {
-                $dest = Join-Path $addonsDirectory -ChildPath $_.Name
+            Get-ChildItem -Directory $uncTempDir\.release\ | ForEach-Object {
+                $src = $_.FullName
+
+                # purge zone identifier files, in case those come along
+                # they're NFS alternate file stream stuff from downloading things
+                # from the internet using Edge/IE
+                if (-Not $src.endswith("Zone.Identifier")) {
+                    $dest = Join-Path $addonsDir -ChildPath $_.Name
+                }
+
+                robocopy /mir $src $dest > "$uncTempDir\.release\robocopy.log"
             }
-
-            robocopy /mir $src $dest > "$uncTempDir\.release\robocopy.log"
         }
 
         # cleanup the temp dir
