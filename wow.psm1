@@ -6,14 +6,15 @@ function Publish-Addon {
         [switch]$retail = $false,
         [switch]$classic = $false,
         [switch]$bcc = $false,
+        [switch]$wrath = $false,
         [switch]$Verbose = $false
     )
     begin {
         $gameDirs = [System.Collections.Generic.List[string]]::new()
-        $all = -Not ($retail -or $classic -or $bcc)
+        $all = -Not ($retail -or $classic -or $bcc -or $wrath)
 
         if ($ptr) {
-            if ($bcc -or $all) {
+            if ($bcc -or $wrath -or $all) {
                 $gameDirs.Add("_classic_ptr_")
             }
 
@@ -26,7 +27,7 @@ function Publish-Addon {
             }
         }
         elseif ($beta) {
-            if ($bcc -or $all) {
+            if ($bcc -or $wrath -or $all) {
                 $gameDirs.Add("_classic_beta_")
             }
 
@@ -39,7 +40,7 @@ function Publish-Addon {
             }
         }
         elseif ($alpha) {
-            if ($bcc -or $all) {
+            if ($bcc -or $wrath -or $all) {
                 $gameDirs.Add("_classic_alpha_")
             }
 
@@ -50,7 +51,7 @@ function Publish-Addon {
             $gameDirs.Add("_alpha_")
         }
         else {
-            if ($bcc -or $all) {
+            if ($bcc -or $wrath -or $all) {
                 $gameDirs.Add("_classic_")
             }
 
@@ -64,73 +65,80 @@ function Publish-Addon {
         }
     }
     process {
-        $tempDir = "/tmp/wowpkg"
-        $uncTempDir = "\\wsl$\Ubuntu\tmp\wowpkg"
+        $tempDir = "/tmp/.wowpackager"
 
-        # copy stuff over to a temporary directory on the linux side
-        # this is a workaround for cross OS filesystem performance being slow
-        # on WSL 2
-        if (Test-Path $uncTempDir) {
-            Remove-Item $uncTempDir -Recurse -Force
-        }
+        # recreate directory
+        # wsl -e rm -rf "$tempDir"
+        # wsl -e mkdir "$tempdir"
 
-        Copy-Item .\ -Destination $uncTempDir -Recurse
+        $cwd =  [IO.Path]::GetFullPath(".\")
+        $cwdWSL = wsl -e wslpath "$cwd"
+        $tempDirUNC = wsl -e wslpath -w "$tempDir"
+        $releaseDirUNC = Join-Path -Path $tempDirUNC -ChildPath ".release"
+
+        # copy files over to WSL (to avoid performance issues when working via NTFS)
+        Write-Host "Copying files from $cwd to $tempDirUNC"
+        wsl -e rsync -rz --delete "$cwdWSL" "$tempdir"
 
         # run the packager script
+        Write-Host "Running Packager"
         if (Test-Path .\*.pkgmeta) {
             # check for flavor specific .pkgmeta files, and use those if they exist
-            if ($bcc) {
+            if ($wrath) {
                 if (Test-Path .\*.pkgmeta-bc) {
-                    bash -c "$WOW_PACKAGER -dlz -g bcc -m .pkgmeta-bcc -t $tempDir"
+                    wsl -e "$WOW_PACKAGER" -dlz -g wrath -m .pkgmeta-wrath -t "$tempDir"
                 }
                 else {
-                    bash -c "$WOW_PACKAGER -dlz -g bcc -t $tempDir"
+                    wsl -e "$WOW_PACKAGER" -dlz -g wrath -t "$tempDir"
+                }
+            }
+            elseif ($bcc) {
+                if (Test-Path .\*.pkgmeta-bc) {
+                    wsl -e "$WOW_PACKAGER" -dlz -g bcc -m .pkgmeta-bcc -t "$tempDir"
+                }
+                else {
+                    wsl -e "$WOW_PACKAGER" -dlz -g bcc -t "$tempDir"
                 }
             }
             elseif ($classic) {
                 if (Test-Path .\*.pkgmeta-classic) {
-                    bash -c "$WOW_PACKAGER -dlz -g classic -m .pkgmeta-classic -t $tempDir"
+                    wsl -e "$WOW_PACKAGER" -dlz -g classic -m .pkgmeta-classic -t "$tempDir"
                 }
                 else {
-                    bash -c "$WOW_PACKAGER -dlz -g classic -t $tempDir"
+                    wsl -e "$WOW_PACKAGER" -dlz -g classic -t "$tempDir"
                 }
             }
             elseif ($retail) {
                 if (Test-Path .\*.pkgmeta-retail) {
-                    bash -c "$WOW_PACKAGER -dlz -g retail -m .pkgmeta-retail -t $tempDir"
+                    wsl -e "$WOW_PACKAGER" -dlz -g retail -m .pkgmeta-retail -t "$tempDir"
                 }
                 else {
-                    bash -c "$WOW_PACKAGER -dlz -g retail -t $tempDir"
+                    wsl -e "$WOW_PACKAGER" -dlz -g retail -t "$tempDir"
                 }
             }
             # publish a universal addon, automatically generating flavor
             # specific TOC files
             else {
-                bash -c "$WOW_PACKAGER -dlzS -t $tempDir"
+                wsl -e "$WOW_PACKAGER" -dlzS -t "$tempDir"
             }
         }
 
         # once the packager script is done, copy stuff back over from the temp
         # directory over to the addons folder
         foreach ($gameDir in $gameDirs) {
-            $addonsDir = [IO.Path]::Combine($WOW_HOME, $gameDir, 'Interface', 'AddOns')
+            $addonsDir = Join-Path $WOW_HOME $gameDir Interface AddOns
+            $addonsDirWSL = wsl -e wslpath "$addonsDir"
 
-            Get-ChildItem -Directory $uncTempDir\.release\ | ForEach-Object {
+            Write-Host "Copying files to $addonsDir"
+
+            Get-ChildItem -Directory $releaseDirUNC | ForEach-Object {
                 $src = $_.FullName
-
-                # purge zone identifier files, in case those come along
-                # they're NFS alternate file stream stuff from downloading things
-                # from the internet using Edge/IE
-                if (-Not $src.endswith("Zone.Identifier")) {
-                    $dest = Join-Path $addonsDir -ChildPath $_.Name
-                }
-
-                robocopy /mir $src $dest > "$uncTempDir\.release\robocopy.log"
+                $srcWSL = wsl -e wslpath "$src"
+                wsl -e rsync -r --delete "$srcWSL" "$addonsDirWSL"
             }
         }
 
-        # cleanup the temp dir
-        Remove-Item $uncTempDir -Recurse -Force
+        Write-Host "Publish complete"
     }
 }
 Export-ModuleMember Publish-Addon
