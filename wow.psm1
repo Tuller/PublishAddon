@@ -71,14 +71,13 @@ function Publish-Addon {
         # wsl -e rm -rf "$tempDir"
         # wsl -e mkdir "$tempdir"
 
-        $cwd =  [IO.Path]::GetFullPath(".\")
-        $cwdWSL = wsl -e wslpath "$cwd"
+        $pwdWSL = wsl -e wslpath "$pwd"
         $tempDirUNC = wsl -e wslpath -w "$tempDir"
         $releaseDirUNC = Join-Path -Path $tempDirUNC -ChildPath ".release"
 
         # copy files over to WSL (to avoid performance issues when working via NTFS)
-        Write-Host "Copying files from $cwd to $tempDirUNC"
-        wsl -e rsync -rz --delete "$cwdWSL" "$tempdir"
+        Write-Host "Copying files from $pwd to $tempDirUNC"
+        wsl -e rsync -rz --delete "$pwdWSL/" "$tempdir"
 
         # run the packager script
         Write-Host "Running Packager"
