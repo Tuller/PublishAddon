@@ -126,14 +126,17 @@ function Publish-Addon {
         # directory over to the addons folder
         foreach ($gameDir in $gameDirs) {
             $addonsDir = Join-Path $WOW_HOME $gameDir Interface AddOns
-            $addonsDirWSL = wsl -e wslpath "$addonsDir"
 
-            Write-Host "Copying files to $addonsDir"
+            if (Test-Path -Path $addonsDir) {
+                $addonsDirWSL = wsl -e wslpath "$addonsDir"
 
-            Get-ChildItem -Directory $releaseDirUNC | ForEach-Object {
-                $src = $_.FullName
-                $srcWSL = wsl -e wslpath "$src"
-                wsl -e rsync -r --delete "$srcWSL" "$addonsDirWSL"
+                Write-Host "Copying files to $addonsDir"
+
+                Get-ChildItem -Directory $releaseDirUNC | ForEach-Object {
+                    $src = $_.FullName
+                    $srcWSL = wsl -e wslpath "$src"
+                    wsl -e rsync -r --delete "$srcWSL" "$addonsDirWSL"
+                }
             }
         }
 
