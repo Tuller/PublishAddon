@@ -14,7 +14,6 @@ addons.
     | Name             | Value                |
     | ---------------- | -------------------- |
     | WOW_HOME         | Wherever you installed World of Warcraft  |
-    | WOW_PACKAGER     | Wherever you installed the packager script |
 
 ## Usage
 
@@ -29,7 +28,7 @@ Publish-Addon
 # replacement abilities for that version and use a flavor specific .pkgmeta
 # (.pkgmeta-[flavor]), if present
 Publish-Addon -retail
-Publish-Addon -bcc
+Publish-Addon -wrath
 Publish-Addon -classic
 
 # Deploy to a specific game release channel.
@@ -39,7 +38,7 @@ Publish-Addon -alpha
 
 # Deploy to a specific flavor and release channel.
 Publish-Addon -retail -ptr
-Publish-Addon -bcc -beta
+Publish-Addon -wrath -beta
 Publish-Addon -classic -alpha
 ```
 
