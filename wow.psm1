@@ -1,74 +1,80 @@
 function Publish-Addon {
     param (
-        [switch]$ptr = $false,
-        [switch]$beta = $false,
-        [switch]$alpha = $false,
-        [switch]$retail = $false,
-        [switch]$classic = $false,
-        [switch]$wrath = $false
+        [ValidateSet("Retail", "Classic", "Wrath", "Vanilla", "All")]
+        [string[]]$Flavor = @("Retail")
+
+        [ValidateSet("Live","PTR", "Beta", "Alpha", "All")]
+        [string[]]$Channel = @("Live")
     )
     begin {
         $WOW_HOME = $env:WOW_HOME
         $PACKAGER_VERSION = "v2.1.0"
         $WORKING_DIR = "/tmp/.publish-addon"
-
         $gameDirs = [System.Collections.Generic.List[string]]::new()
-        $all = -Not ($retail -or $classic -or $wrath)
 
-        # the PTR is messy
-        if ($ptr) {
-            # 1.14.4
-            if ($classic -or $all) {
-                $gameDirs.Add("_ptr2_")
+        # game flavor
+        $retail = $Flavor -Contains "Retail" -or $Flavor -Contains "All"
+        $wrath = $Flavor -Contains "Wrath" -or $Flavor -Contains "Classic" -or $Flavor -Contains "All"
+        $vanilla = $Flavor -Contains "Vanilla" -or $Flavor -Contains "Classic" -or $Flavor -Contains "All"
+
+        # release channel
+        $live = $Channel -Contains "Live" -or $Channel -Contains "All"
+        $ptr = $Channel -Contains "PTR" -or $Channel -Contains "All"
+        $beta = $Channel -Contains "Beta" -or $Channel -Contains "All"
+        $alpha = $Channel -Contains "Alpha" -or $Channel -Contains "All"
+
+        if ($retail) {
+            if ($live) {
+                $gameDirs.Add("_retail_")
             }
 
-            if ($wrath -or $all) {
-                $gameDirs.Add("_classic_ptr_")
-            }
-
-            if ($retail -or $all) {
-                # 10.1.0
+            if ($ptr) {
                 $gameDirs.Add("_ptr_")
-
-                # 10.1.5
                 $gameDirs.Add("_xptr_")
             }
-        }
-        elseif ($beta) {
-            if ($wrath -or $all) {
-                $gameDirs.Add("_classic_beta_")
-            }
 
-            if ($classic -or $all) {
-                $gameDirs.Add("_classic_era_beta_")
-            }
-
-            if ($retail -or $all) {
+            if ($beta) {
                 $gameDirs.Add("_beta_")
             }
-        }
-        elseif ($alpha) {
-            if ($wrath -or $all) {
-                $gameDirs.Add("_classic_alpha_")
-            }
 
-            if ($classic -or $all) {
-                $gameDirs.Add("_classic_era_alpha_")
+            if ($alpha) {
+                $gameDirs.Add("_alpha_")
             }
-
-            $gameDirs.Add("_alpha_")
         }
-        else {
-            if ($wrath -or $all) {
+
+        if ($wrath) {
+            if ($live) {
                 $gameDirs.Add("_classic_")
             }
 
-            if ($classic -or $all) {
+            if ($ptr) {
+                $gameDirs.Add("_classic_ptr_")
+            }
+
+            if ($beta) {
+                $gameDirs.Add("_classic_beta_")
+            }
+
+            if ($alpha) {
+                $gameDirs.Add("_classic_alpha_")
+            }
+        }
+
+        if ($vanilla) {
+            if ($live) {
                 $gameDirs.Add("_classic_era_")
             }
 
-            if ($retail -or $all) {
-                $gameDirs.Add("_retail_")
+            if ($ptr) {
+                $gameDirs.Add("_classic_era_ptr_")
+            }
+
+            if ($beta) {
+                $gameDirs.Add("_classic_era_beta_")
+            }
+
+            if ($alpha) {
+                $gameDirs.Add("_classic_era_alpha_")
             }
         }
     }
@@ -101,37 +107,9 @@ function Publish-Addon {
 
         # 4. construct the packager arguments
         $args = [System.Collections.Generic.List[string]]::new()
-        $args.add('-dlz')
+        $args.add('-dlzS')
         $args.add('-t {0}' -f $addonDir)
         $args.add('-r {0}' -f $releaseDir)
-
-        # check for flavor specific .pkgmeta files, and use those if they exist
-        if ($wrath) {
-            $args.add('-g wrath')
-
-            if (Test-Path .\*.pkgmeta-wrath) {
-                $args.add('-m "{0}/.pkgmeta-wrath"' -f $addonDir)
-            }
-        }
-        elseif ($classic) {
-            $args.add('-g classic')
-
-            if (Test-Path .\*.pkgmeta-classic) {
-                $args.add('-m "{0}/.pkgmeta-classic"' -f $addonDir)
-            }
-        }
-        elseif ($retail) {
-            $args.add('-g retail')
-
-            if (Test-Path .\*.pkgmeta-retail) {
-                $args.add('-m "{0}/.pkgmeta-retail"' -f $addonDir)
-            }
-        }
-        # publish a universal addon, automatically generating flavor
-        # specific TOC files
-        else {
-            $args.add('-S')
-        }
 
         # 5. execute the packager
         Write-Host "Running packager"

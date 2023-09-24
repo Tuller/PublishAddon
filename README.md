@@ -20,27 +20,23 @@ addons.
 From an addon directory with a .pkgmeta file, run one of the following:
 
 ```powershell
-# Deploy a version for each game flavor (Retail, BCC, Vanilla) with the live
-# release channel.
+# Publishes an addon using the bigwigs packager too the Retail addons directory
 Publish-Addon
 
-# Target a specific game flavor. This will use the packager's keyword
-# replacement abilities for that version and use a flavor specific .pkgmeta
-# (.pkgmeta-[flavor]), if present
-Publish-Addon -retail
-Publish-Addon -wrath
-Publish-Addon -classic
+# Publish to one or more release channels (Live, PTR, Beta, Alpha)
+Publish-Addon -Channel Live
+Publish-Addon -Channel Live, PTR
 
-# Deploy to a specific game release channel.
-Publish-Addon -ptr
-Publish-Addon -beta
-Publish-Addon -alpha
+# all release channels
+Publish-Addon -Channel All
 
-# Deploy to a specific flavor and release channel.
-Publish-Addon -retail -ptr
-Publish-Addon -wrath -beta
-Publish-Addon -classic -alpha
+# Specify one or more game flavors (Retail, Wrath, Vanilla)
+Publish-Addon -Flavor Retail
+Publish-Addon -Flavor Wrath, Vanilla
+
+# classic era + classic
+Publish-Addon -Flavor Classic
+
+# all game flavors
+Publish-Addon -Channel All
 ```
-
-This will package up your addon and copy it to the Interface\AddOns folder in
-the targeted World of Warcraft install directory.
