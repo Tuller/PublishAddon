@@ -1,28 +1,60 @@
 function Publish-Addon {
     param (
         [ValidateSet("Retail", "Classic", "Wrath", "Vanilla", "All")]
-        [string[]]$Flavor = @("Retail")
-
+        [string[]]$Flavor = "Retail",
         [ValidateSet("Live","PTR", "Beta", "Alpha", "All")]
-        [string[]]$Channel = @("Live")
+        [string[]]$Channel = "Live",
+        [string]$PackagerVersion = "v2.1.0",
+        [switch]$live = $false,
+        [switch]$ptr = $false,
+        [switch]$beta = $false,
+        [switch]$alpha = $false
     )
-    begin {
-        $WOW_HOME = $env:WOW_HOME
-        $PACKAGER_VERSION = "v2.1.0"
-        $WORKING_DIR = "/tmp/.publish-addon"
-        $gameDirs = [System.Collections.Generic.List[string]]::new()
+    process {
+        if (!(Test-Path .\*.pkgmeta*)) {
+            Write-Host "The current directory does not contain a pkgmeta file"
+            return
+        }
 
-        # game flavor
-        $retail = $Flavor -Contains "Retail" -or $Flavor -Contains "All"
-        $wrath = $Flavor -Contains "Wrath" -or $Flavor -Contains "Classic" -or $Flavor -Contains "All"
+        $WOW_HOME = $env:WOW_HOME
+        if (!(Test-Path $WOW_HOME)) {
+            Write-Host "The WOW_HOME environment variable hasn't been set. Please set it to the location of World of Warcraft Launcher.exe"
+            return;
+        }
+
+        if($live -or $ptr -or $beta -or $alpha) {
+            $Channel = @()
+
+            if ($live) {
+                $Channel += "Live"
+            }
+
+            if ($ptr) {
+                $Channel += "PTR"
+            }
+
+            if ($beta) {
+                $Channel += "Beta"
+            }
+
+            if ($alpha) {
+                $Channel += "Alpha"
+            }
+        }
+
+        # figure out what game flavors we're publishing for
+        $retail =  $Flavor -Contains "Retail" -or $Flavor -Contains "All"
+        $wrath =   $Flavor -Contains "Wrath" -or $Flavor -Contains "Classic" -or $Flavor -Contains "All"
         $vanilla = $Flavor -Contains "Vanilla" -or $Flavor -Contains "Classic" -or $Flavor -Contains "All"
 
-        # release channel
-        $live = $Channel -Contains "Live" -or $Channel -Contains "All"
-        $ptr = $Channel -Contains "PTR" -or $Channel -Contains "All"
-        $beta = $Channel -Contains "Beta" -or $Channel -Contains "All"
+        # figure out what release channels we're publishing for
+        $live =  $Channel -Contains "Live" -or $Channel -Contains "All"
+        $ptr =   $Channel -Contains "PTR" -or $Channel -Contains "All"
+        $beta =  $Channel -Contains "Beta" -or $Channel -Contains "All"
         $alpha = $Channel -Contains "Alpha" -or $Channel -Contains "All"
 
+        # grab all of the game directory folders we're going to publish to
+        $gameDirs = [System.Collections.Generic.List[string]]::new()
         if ($retail) {
             if ($live) {
                 $gameDirs.Add("_retail_")
@@ -77,18 +109,8 @@ function Publish-Addon {
                 $gameDirs.Add("_classic_era_alpha_")
             }
         }
-    }
-    process {
-        if (!(Test-Path $WOW_HOME)) {
-            Write-Host "The WOW_HOME environment variable hasn't been set. Please set it to the location of World of Warcraft Launcher.exe"
-            return;
-        }
 
-        if (!(Test-Path .\*.pkgmeta*)) {
-            Write-Host "The current directory does not contain a pkgmeta file"
-            return
-        }
-
+        $WORKING_DIR = "/tmp/.publish-addon"
         $addonDir = "$WORKING_DIR/in"
         $releaseDir = "$WORKING_DIR/out"
         $packager = "$WORKING_DIR/release.sh"
@@ -102,18 +124,18 @@ function Publish-Addon {
         wsl -e rsync -rz --delete "$pwdWSL/" "$addonDir"
 
         # 3. grab the packager script
-        wsl -e curl -s -o "$packager" "https://raw.githubusercontent.com/BigWigsMods/packager/$PACKAGER_VERSION/release.sh"
+        wsl -e curl -s -o "$packager" "https://raw.githubusercontent.com/BigWigsMods/packager/$PackagerVersion/release.sh"
         wsl -e chmod u+x "$packager"
 
         # 4. construct the packager arguments
-        $args = [System.Collections.Generic.List[string]]::new()
-        $args.add('-dlzS')
-        $args.add('-t {0}' -f $addonDir)
-        $args.add('-r {0}' -f $releaseDir)
+        $packagerArgs = [System.Collections.Generic.List[string]]::new()
+        $packagerArgs.add('-dlzS')
+        $packagerArgs.add('-t {0}' -f $addonDir)
+        $packagerArgs.add('-r {0}' -f $releaseDir)
 
         # 5. execute the packager
         Write-Host "Running packager"
-        Invoke-Expression "wsl -e $packager $($args -Join ' ')"
+        Invoke-Expression "wsl -e $packager $($packagerArgs -Join ' ')"
 
         # 6. copy the output files over to the target wow directories
         $releaseDirUNC = wsl -e wslpath -w $releaseDir
@@ -131,12 +153,12 @@ function Publish-Addon {
                 }
             }
         }
-    }
-    end {
+
         # 7. cleanup
         Write-Host "Cleaning up"
         wsl -e rm -rf $WORKING_DIR
         Write-Host "Publish complete"
     }
 }
+
 Export-ModuleMember Publish-Addon
